@@ -3,7 +3,6 @@
 **Dynamic Application Security Testing (DAST) & Runtime Policy Gateway for LLM-Powered AI Agents.**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Zero-Cost Inference](https://img.shields.io/badge/cost-zero--spend%20free%20tier-brightgreen.svg)](#supported-free-tier-providers)
 [![OWASP LLM & MITRE ATLAS](https://img.shields.io/badge/taxonomy-OWASP%20LLM%20%2B%20MITRE%20ATLAS-orange.svg)](#features)
 
@@ -24,7 +23,6 @@ Instead of judging agent security from text completions alone, AgentShield execu
 - [FastAPI Service & React Dashboard](#fastapi-service--react-dashboard)
 - [Project Structure](#project-structure)
 - [Authorized Testing & Limitations](#authorized-testing--limitations)
-- [License](#license)
 
 ---
 
@@ -65,41 +63,20 @@ Static prompt scanning and single-turn text evals miss the real security risks o
 
 ## Architecture
 
-```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│                CLI (Typer + Rich)  │  FastAPI (/api/v1)  │  React UI    │
-└────────────────────────────────────┬────────────────────────────────────┘
-                                     ▼
-               LangGraph ScanOrchestrator (Budgets & Scope)
-                      │                            │
-                      ▼                            ▼
-       Context-Aware Test Engine            Target Harnesses
-       (Static Templates + Bounded          (Python / HTTP / LangGraph /
-        LLM Variations + Validator)          MCP + CapabilityManifest)
-                      │                            │
-                      └─────────────┬──────────────┘
-                                    ▼
-                        Real Target Agent (LangGraph)
-                        [Support Agent  │  RAG Agent]
-                                    │
-                                    ▼
-                    AgentShieldGuard (PolicyEngine Middleware)
-                    [Allowlists │ Ownership │ ApprovalTokens]
-                                    │
-                                    ▼
-                     Isolated SQLite Synthetic Sandboxes
-                     (Customer Support DB │ RAG & Memory DB)
-                                    │
-                                    ▼
-                TraceCollector & TraceStore (SQLite + Redaction)
-                         (+ Optional OTEL JSONL Export)
-                                    │
-                                    ▼
-                    Evidence-Based SecurityEvaluator
-                    (Deterministic Assertions + Optional LLM Judge)
-                                    │
-                                    ▼
-        HTML / JSON / SARIF 2.1.0 Reports │ RegressionStore │ CI Gate
+```mermaid
+flowchart TD
+    UI["CLI (Typer + Rich) / FastAPI (/api/v1) / React Dashboard"] --> ORCH["LangGraph ScanOrchestrator (Budgets & Scope)"]
+    ORCH --> ENGINE["Context-Aware Test Engine (Static Templates + Bounded LLM + Validator)"]
+    ORCH --> HARNESS["Target Harnesses (Python / HTTP / LangGraph / MCP + CapabilityManifest)"]
+    ENGINE --> AGENT["Real Target Agent (SupportAgent / RAGAgent)"]
+    HARNESS --> AGENT
+    AGENT --> GUARD["AgentShieldGuard PolicyEngine Middleware (Allowlists, Ownership, ApprovalTokens)"]
+    GUARD --> DB["Isolated SQLite Synthetic Sandboxes (SupportSandboxDB / RAGMemoryStore)"]
+    AGENT --> TRACE["TraceCollector & TraceStore (SQLite + Redaction + OTEL JSONL Export)"]
+    DB --> TRACE
+    TRACE --> EVAL["Evidence-Based SecurityEvaluator (Deterministic Rules + Optional LLM Judge)"]
+    EVAL --> REPORT["HTML / JSON / SARIF 2.1.0 Reports, RegressionStore & CI Gate"]
+    REPORT -. "Regression Replay" .-> ENGINE
 ```
 
 ### Component Overview
@@ -298,7 +275,6 @@ Agent-DAST/
 │   ├── unit/                   # Offline unit & policy fixture tests
 │   └── integration/            # Opt-in live LLM integration tests
 ├── .env.example                # Environment template (no secrets)
-├── CHANGELOG.md                # Release and add-on history
 ├── pyproject.toml              # Python packaging & pytest configuration
 └── SECURITY.md                 # Authorized testing rules & vulnerability disclosure
 ```
@@ -310,7 +286,3 @@ Agent-DAST/
 - **Explicit Authorization Required**: Only scan agents, APIs, and MCP servers you own or have explicit written authorization to test. Both `BaseHarness` and `/api/v1/scans` reject targets without `authorized=True`, and `validate_target_url` blocks metadata/private/localhost SSRF targets by default. See [SECURITY.md](SECURITY.md).
 - **Black-Box vs. Instrumented**: Black-box targets that do not expose tool traces report `telemetry_available=False` and `inconclusive` for tool-level assertions—AgentShield never fabricates trace evidence.
 - **Free-Tier Quotas**: Free API tiers enforce rate limits and daily request caps; `ScanOrchestrator` enforces hard token, turn, test, and duration budgets and reports partial results honestly when budgets are exhausted.
-
-## License
-
-MIT — see [LICENSE](LICENSE).
